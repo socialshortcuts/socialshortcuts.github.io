@@ -1,49 +1,1290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Social Shortcuts — OSINT Query Builder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    /* ── Tokens ──────────────────────────────────────────────────── */
+    :root {
+      --bg:        #0f1117;
+      --surface:   #1a1d27;
+      --border:    #2a2d3a;
+      --blue:      #1877f2;
+      --blue-dim:  #0e4fa8;
+      --blue-soft: #1a3a6b;
+      --blue-pill: #e8f0fe;
+      --green:     #22c55e;
+      --green-dim: #166534;
+      --text:      #e2e8f0;
+      --muted:     #6b7280;
+      --label:     #94a3b8;
+      --red:       #ef4444;
+      --white:     #ffffff;
+      --radius:    8px;
+      --radius-lg: 12px;
+    }
 
-export default function GoogleDorkBuilder() {
-  const operators = [
-    'site:', 'filetype:', 'intitle:', 'inurl:', 'intext:'
-  ];
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  return (
-    <div className="min-h-screen bg-slate-50 p-6">
-      <div className="max-w-5xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-4xl font-bold">SocialShortcuts Dork Builder</h1>
-          <p className="text-slate-600 mt-2">
-            Build advanced Google search strings through a friendly interface.
-          </p>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ──────────────────────────────────────────────────── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 32px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .logo-icon {
+      width: 28px;
+      height: 28px;
+      background: var(--blue);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+    .logo-text {
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--white);
+      letter-spacing: -0.02em;
+    }
+    .logo-sub {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 400;
+    }
+
+    /* Engine toggle */
+    .engine-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 4px;
+    }
+    .engine-btn {
+      padding: 5px 14px;
+      border-radius: 16px;
+      border: none;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all 0.15s;
+      background: transparent;
+      color: var(--muted);
+    }
+    .engine-btn.active {
+      background: var(--blue);
+      color: var(--white);
+    }
+    .engine-btn:not(.active):hover { color: var(--text); }
+
+    /* ── Main layout ─────────────────────────────────────────────── */
+    main {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      flex: 1;
+      min-height: 0;
+    }
+
+    /* ── Query panel (left) ───────────────────────────────────────── */
+    .query-panel {
+      background: var(--bg);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: sticky;
+      top: 61px;
+      height: calc(100vh - 61px);
+    }
+
+    .query-panel-header {
+      padding: 20px 24px 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .query-panel-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--green);
+    }
+    .copy-btn {
+      font-size: 11px;
+      color: var(--muted);
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 3px 8px;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      transition: all 0.15s;
+    }
+    .copy-btn:hover { color: var(--text); border-color: var(--muted); }
+    .copy-btn.copied { color: var(--green); border-color: var(--green); }
+
+    .query-display {
+      flex: 1;
+      padding: 20px 24px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 1.7;
+      color: var(--green);
+      overflow-y: auto;
+      word-break: break-all;
+      white-space: pre-wrap;
+      position: relative;
+    }
+    .query-display.empty { color: var(--muted); font-style: italic; }
+
+    .cursor {
+      display: inline-block;
+      width: 8px;
+      height: 14px;
+      background: var(--green);
+      vertical-align: text-bottom;
+      animation: blink 1s step-end infinite;
+      margin-left: 2px;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    .query-panel-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .search-btn {
+      width: 100%;
+      padding: 12px;
+      background: var(--blue);
+      color: var(--white);
+      border: none;
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: background 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .search-btn:hover { background: var(--blue-dim); }
+    .search-btn:disabled {
+      background: var(--border);
+      color: var(--muted);
+      cursor: not-allowed;
+    }
+    .query-hint {
+      font-size: 11px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    /* ── Controls panel (right) ──────────────────────────────────── */
+    .controls-panel {
+      padding: 32px;
+      overflow-y: auto;
+    }
+
+    /* Mode tabs */
+    .mode-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 32px;
+    }
+    .mode-tab {
+      flex: 1;
+      padding: 12px 8px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--muted);
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .mode-tab .tab-icon { font-size: 20px; }
+    .mode-tab:hover { border-color: var(--blue); color: var(--text); }
+    .mode-tab.active {
+      border-color: var(--blue);
+      background: var(--blue-soft);
+      color: var(--white);
+    }
+
+    /* Section */
+    .section {
+      margin-bottom: 28px;
+    }
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--label);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .hint-icon {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--border);
+      color: var(--muted);
+      font-size: 9px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: help;
+      position: relative;
+    }
+    .hint-icon:hover::after {
+      content: attr(data-hint);
+      position: absolute;
+      left: 20px;
+      top: -4px;
+      background: #1e2130;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 11px;
+      font-weight: 400;
+      text-transform: none;
+      letter-spacing: 0;
+      padding: 8px 12px;
+      border-radius: 6px;
+      width: 220px;
+      white-space: normal;
+      z-index: 10;
+      line-height: 1.5;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+
+    /* Network pills */
+    .pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .pill {
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 500;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    .pill:hover { border-color: var(--blue); color: var(--text); }
+    .pill.active {
+      border-color: var(--blue);
+      background: var(--blue-soft);
+      color: var(--white);
+    }
+
+    /* Form fields */
+    .field {
+      margin-bottom: 16px;
+    }
+    .field-label {
+      font-size: 12px;
+      color: var(--label);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .field-label .operator-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      background: var(--border);
+      color: var(--green);
+      padding: 1px 6px;
+      border-radius: 3px;
+    }
+
+    input[type="text"], textarea {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input[type="text"]:focus, textarea:focus {
+      border-color: var(--blue);
+    }
+    input[type="text"]::placeholder, textarea::placeholder {
+      color: var(--muted);
+    }
+    textarea {
+      resize: vertical;
+      min-height: 72px;
+      line-height: 1.5;
+    }
+
+    /* Date range */
+    .date-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    /* Modifiers */
+    .modifiers {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .modifier {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      transition: border-color 0.15s;
+    }
+    .modifier:has(input[type="checkbox"]:checked) {
+      border-color: var(--blue-soft);
+    }
+    .modifier input[type="checkbox"] {
+      width: 15px;
+      height: 15px;
+      margin-top: 1px;
+      accent-color: var(--blue);
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+    .modifier-body { flex: 1; min-width: 0; }
+    .modifier-title {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 2px;
+      cursor: pointer;
+    }
+    .modifier-desc {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    .modifier-desc .mono {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--green);
+      font-size: 10px;
+    }
+
+    /* Divider */
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 8px 0 24px;
+    }
+
+    /* Mode panels */
+    .mode-panel { display: none; }
+    .mode-panel.active { display: block; }
+
+    /* OR alternatives helper */
+    .or-note {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 5px;
+    }
+    .or-note .mono { font-family: 'JetBrains Mono', monospace; color: var(--green); font-size: 10px; }
+
+    /* Radio group */
+    .radio-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .radio-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: var(--surface);
+      cursor: pointer;
+      transition: all 0.15s;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .radio-pill input { display: none; }
+    .radio-pill:has(input:checked) {
+      border-color: var(--blue);
+      background: var(--blue-soft);
+      color: var(--white);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      main { grid-template-columns: 1fr; }
+      .query-panel {
+        position: static;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+      .query-display { min-height: 100px; max-height: 180px; }
+      .controls-panel { padding: 20px 16px; }
+      header { padding: 12px 16px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .cursor { animation: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ──────────────────────────────────────────────── -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    <div>
+      <div class="logo-text">Social Shortcuts</div>
+      <div class="logo-sub">OSINT Query Builder</div>
+    </div>
+  </div>
+
+  <div class="engine-toggle">
+    <button class="engine-btn active" id="btnGoogle" onclick="setEngine('google')">Google</button>
+    <button class="engine-btn" id="btnBrave" onclick="setEngine('brave')">Brave</button>
+  </div>
+</header>
+
+<!-- ── Main ────────────────────────────────────────────────── -->
+<main>
+
+  <!-- Query panel -->
+  <div class="query-panel">
+    <div class="query-panel-header">
+      <span class="query-panel-label">▶ Live query</span>
+      <button class="copy-btn" id="copyQueryBtn" onclick="copyQuery()">Copy</button>
+    </div>
+    <div class="query-display empty" id="queryDisplay">
+      Start filling in the fields →<span class="cursor"></span>
+    </div>
+    <div class="query-panel-footer">
+      <button class="search-btn" id="searchBtn" onclick="runSearch()" disabled>
+        🔍 Search
+      </button>
+      <div class="query-hint" id="engineHint">Searching with Google</div>
+    </div>
+  </div>
+
+  <!-- Controls panel -->
+  <div class="controls-panel">
+
+    <!-- Mode tabs -->
+    <div class="mode-tabs">
+      <button class="mode-tab active" onclick="setMode('profile', this)">
+        <span class="tab-icon">👤</span> Profile
+      </button>
+      <button class="mode-tab" onclick="setMode('post', this)">
+        <span class="tab-icon">📝</span> Post
+      </button>
+      <button class="mode-tab" onclick="setMode('domain', this)">
+        <span class="tab-icon">🔍</span> Domain
+      </button>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+         PROFILE MODE
+    ═══════════════════════════════════════════════════════ -->
+    <div class="mode-panel active" id="panel-profile">
+
+      <div class="section">
+        <div class="section-label">
+          Network
+          <span class="hint-icon" data-hint="Selects the site: operator. You can deselect below to search for mentions of the profile across any site.">?</span>
         </div>
+        <div class="pills" id="profile-pills">
+          <button class="pill" data-net="facebook" onclick="toggleNet('profile', 'facebook', this)">📘 Facebook</button>
+          <button class="pill" data-net="instagram" onclick="toggleNet('profile', 'instagram', this)">📸 Instagram</button>
+          <button class="pill" data-net="twitter" onclick="toggleNet('profile', 'twitter', this)">🐦 X / Twitter</button>
+          <button class="pill" data-net="linkedin" onclick="toggleNet('profile', 'linkedin', this)">💼 LinkedIn</button>
+          <button class="pill" data-net="tiktok" onclick="toggleNet('profile', 'tiktok', this)">🎵 TikTok</button>
+          <button class="pill" data-net="youtube" onclick="toggleNet('profile', 'youtube', this)">▶️ YouTube</button>
+          <button class="pill" data-net="pinterest" onclick="toggleNet('profile', 'pinterest', this)">📌 Pinterest</button>
+        </div>
+      </div>
 
-        <div className="grid md:grid-cols-2 gap-4">
-          <div className="bg-white rounded-3xl shadow p-6">
-            <h2 className="text-xl font-semibold mb-4">Search Builder</h2>
-            <input
-              className="w-full border rounded-xl p-3 mb-3"
-              placeholder="Target domain"
-            />
-            <input
-              className="w-full border rounded-xl p-3 mb-3"
-              placeholder="Keywords"
-            />
-            <select className="w-full border rounded-xl p-3">
-              <option>Select operator</option>
-              {operators.map(op => (
-                <option key={op}>{op}</option>
-              ))}
-            </select>
+      <div class="section">
+        <div class="section-label">
+          Identifier
+          <span class="hint-icon" data-hint="The name, username, or email you're looking for. Use the exact format you know (full name, @handle, email). Partial names work but generate more noise.">?</span>
+        </div>
+        <div class="field">
+          <div class="field-label">
+            Full name or username
+            <span class="operator-tag">"exact match"</span>
           </div>
+          <input type="text" id="p-name" placeholder='e.g. "John Smith" or @johnsmith' oninput="buildQuery()">
+        </div>
+        <div class="field">
+          <div class="field-label">
+            Alternative name / alias
+            <span class="operator-tag">OR</span>
+          </div>
+          <input type="text" id="p-alias" placeholder="Nickname, maiden name, alias…" oninput="buildQuery()">
+          <div class="or-note">Adds <span class="mono">OR "alias"</span> — useful for nicknames or name variants.</div>
+        </div>
+        <div class="field">
+          <div class="field-label">
+            Additional keyword
+            <span class="operator-tag">AND</span>
+          </div>
+          <input type="text" id="p-keyword" placeholder="Job title, city, company…" oninput="buildQuery()">
+          <div class="or-note">Narrows results. Combined with AND (implicit in Google/Brave).</div>
+        </div>
+      </div>
 
-          <div className="bg-white rounded-3xl shadow p-6">
-            <h2 className="text-xl font-semibold mb-4">Generated Dork</h2>
-            <div className="bg-slate-100 rounded-xl p-4 font-mono">
-              site:example.com filetype:pdf confidential
-            </div>
-            <button className="mt-4 px-4 py-2 rounded-2xl bg-black text-white">
-              Search in Google
-            </button>
+      <div class="section">
+        <div class="section-label">
+          Date range
+          <span class="hint-icon" data-hint="after: and before: filter results by publication date. Google respects these for indexed pages. Format: YYYY-MM-DD.">?</span>
+        </div>
+        <div class="date-row">
+          <div class="field">
+            <div class="field-label">After <span class="operator-tag">after:</span></div>
+            <input type="text" id="p-after" placeholder="2023-01-01" oninput="buildQuery()">
+          </div>
+          <div class="field">
+            <div class="field-label">Before <span class="operator-tag">before:</span></div>
+            <input type="text" id="p-before" placeholder="2024-12-31" oninput="buildQuery()">
           </div>
         </div>
       </div>
-    </div>
-  );
+
+      <div class="section">
+        <div class="section-label">
+          Modifiers
+          <span class="hint-icon" data-hint="Advanced operators that refine where and how Google/Brave looks. Each one adds an operator to the live query on the left.">?</span>
+        </div>
+        <div class="modifiers">
+
+          <label class="modifier">
+            <input type="checkbox" id="p-mod-site" onchange="buildQuery()" checked>
+            <div class="modifier-body">
+              <div class="modifier-title" onclick="this.previousElementSibling?.click()">
+                Restrict to selected network
+                <span class="operator-tag">site:</span>
+              </div>
+              <div class="modifier-desc">
+                <span class="mono">site:facebook.com/in/</span> — limits results to the network's profile pages. Uncheck to search for mentions of this person across any site.
+              </div>
+            </div>
+          </label>
+
+          <label class="modifier">
+            <input type="checkbox" id="p-mod-inurl" onchange="buildQuery()">
+            <div class="modifier-body">
+              <div class="modifier-title" onclick="this.previousElementSibling?.click()">
+                Force profile URL
+                <span class="operator-tag">inurl:</span>
+              </div>
+              <div class="modifier-desc">
+                <span class="mono">inurl:username</span> — requires the identifier to appear in the URL itself, not just the page text. Strong signal for direct profile hits.
+              </div>
+            </div>
+          </label>
+
+          <label class="modifier">
+            <input type="checkbox" id="p-mod-excgroups" onchange="buildQuery()">
+            <div class="modifier-body">
+              <div class="modifier-title" onclick="this.previousElementSibling?.click()">
+                Exclude groups &amp; feeds
+                <span class="operator-tag">-inurl:</span>
+              </div>
+              <div class="modifier-desc">
+                Adds <span class="mono">-inurl:groups -inurl:feed</span> — removes group posts and feed pages, leaving only direct profile URLs.
+              </div>
+            </div>
+          </label>
+
+          <label class="modifier">
+            <input type="checkbox" id="p-mod-intitle" onchange="buildQuery()">
+            <div class="modifier-body">
+              <div class="modifier-title" onclick="this.previousElementSibling?.click()">
+                Name must appear in page title
+                <span class="operator-tag">intitle:</span>
+              </div>
+              <div class="modifier-desc">
+                <span class="mono">intitle:"John Smith"</span> — profile pages usually have the person's name as the page &lt;title&gt;. High precision, lower recall.
+              </div>
+            </div>
+          </label>
+
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">
+          Exclusions
+          <span class="hint-icon" data-hint="Terms to exclude. Each word or phrase becomes -word or -&quot;phrase&quot; in the query. Separate by commas or newlines.">?</span>
+        </div>
+        <div class="field">
+          <div class="field-label">Exclude terms <span class="operator-tag">-term</span></div>
+          <textarea id="p-exclude" placeholder="marketplace, groups, jobs…" oninput="buildQuery()"></textarea>
+        </div>
+      </div>
+
+    </div><!-- /panel-profile -->
+
+
+    <!-- ═══════════════════════════════════════════════════════
+         POST MODE
+    ═══════════════════════════════════════════════════════ -->
+    <div class="mode-panel" id="panel-post">
+
+      <div class="section">
+        <div class="section-label">
+          Network
+          <span class="hint-icon" data-hint="Each network gets a tailored site: operator. X/Twitter searches both x.com and twitter.com.">?</span>
+        </div>
+        <div class="pills" id="post-pills">
+          <button class="pill" data-net="facebook" onclick="toggleNet('post', 'facebook', this)">📘 Facebook</button>
+          <button class="pill" data-net="instagram" onclick="toggleNet('post', 'instagram', this)">📸 Instagram</button>
+          <button class="pill" data-net="twitter" onclick="toggleNet('post', 'twitter', this)">🐦 X / Twitter</button>
+          <button class="pill" data-net="linkedin" onclick="toggleNet('post', 'linkedin', this)">💼 LinkedIn</button>
+          <button class="pill" data-net="tiktok" onclick="toggleNet('post', 'tiktok', this)">🎵 TikTok</button>
+          <button class="pill" data-net="youtube" onclick="toggleNet('post', 'youtube', this)">▶️ YouTube</button>
+          <button class="pill" data-net="pinterest" onclick="toggleNet('post', 'pinterest', this)">📌 Pinterest</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Post content</div>
+        <div class="field">
+          <div class="field-label">Exact phrase <span class="operator-tag">"…"</span></div>
+          <input type="text" id="post-exact" placeholder="Exact words you remember from the post…" oninput="buildQuery()">
+          <div class="or-note">Wrapped in quotes automatically. Best signal if you recall a specific phrase.</div>
+        </div>
+        <div class="field">
+          <div class="field-label">Additional keywords <span class="operator-tag">AND</span></div>
+          <input type="text" id="post-and" placeholder="topic, hashtag, place…" oninput="buildQuery()">
+        </div>
+        <div class="field">
+          <div class="field-label">Alternatives <span class="operator-tag">OR</span></div>
+          <input type="text" id="post-or" placeholder="synonym1, synonym2…" oninput="buildQuery()">
+          <div class="or-note">Comma-separated. Becomes <span class="mono">(word1 OR word2)</span>.</div>
+        </div>
+        <div class="field">
+          <div class="field-label">Posted by (username / handle) <span class="operator-tag">inurl:</span></div>
+          <input type="text" id="post-author" placeholder="@username or profile slug" oninput="buildQuery()">
+          <div class="or-note">Adds <span class="mono">inurl:username</span> to target a specific author's posts.</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">
+          Date range
+          <span class="hint-icon" data-hint="after: / before: are most effective on Twitter/X and LinkedIn. Facebook results are less reliably date-filtered by Google.">?</span>
+        </div>
+        <div class="date-row">
+          <div class="field">
+            <div class="field-label">After <span class="operator-tag">after:</span></div>
+            <input type="text" id="post-after" placeholder="2023-01-01" oninput="buildQuery()">
+          </div>
+          <div class="field">
+            <div class="field-label">Before <span class="operator-tag">before:</span></div>
+            <input type="text" id="post-before" placeholder="2024-12-31" oninput="buildQuery()">
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Modifiers</div>
+        <div class="modifiers">
+
+          <label class="modifier">
+            <input type="checkbox" id="post-mod-site" onchange="buildQuery()" checked>
+            <div class="modifier-body">
+              <div class="modifier-title" onclick="this.previousElementSibling?.click()">
+                Restrict to selected network <span class="operator-tag">site:</span>
+              </div>
+              <div class="modifier-desc">
+                Uncheck to search for references to this post or topic across any site (news, forums, reposts).
+              </div>
+            </div>
+          </label>
+
+          <label class="modifier">
+            <input type="checkbox" id="post-mod-excprofile" onchange="buildQuery()">
+            <div class="modifier-body">
+              <div class="modifier-title" onclick="this.previousElementSibling?.click()">
+                Exclude profile pages <span class="operator-tag">-inurl:</span>
+              </div>
+              <div class="modifier-desc">
+                Adds <span class="mono">-inurl:/in/ -inurl:/user/</span> — removes profile pages from results, targeting only individual posts.
+              </div>
+            </div>
+          </label>
+
+          <label class="modifier">
+            <input type="checkbox" id="post-mod-twitter-both" onchange="buildQuery()">
+            <div class="modifier-body">
+              <div class="modifier-title" onclick="this.previousElementSibling?.click()">
+                Search both X and Twitter domains <span class="operator-tag">OR site:</span>
+              </div>
+              <div class="modifier-desc">
+                Adds <span class="mono">(site:twitter.com OR site:x.com)</span> — many archived or linked posts still appear under twitter.com.
+              </div>
+            </div>
+          </label>
+
+          <label class="modifier">
+            <input type="checkbox" id="post-mod-cache" onchange="buildQuery()">
+            <div class="modifier-body">
+              <div class="modifier-title" onclick="this.previousElementSibling?.click()">
+                Include deleted / cached content hint
+              </div>
+              <div class="modifier-desc">
+                Appends <span class="mono">cache:</span> note as a reminder — Google cache access is limited, but searching <span class="mono">site:web.archive.org</span> can recover deleted posts.
+              </div>
+            </div>
+          </label>
+
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Exclusions <span class="hint-icon" data-hint="Terms to exclude from results. Each becomes -term or -&quot;phrase&quot;.">?</span></div>
+        <div class="field">
+          <textarea id="post-exclude" placeholder="retweet, RT, sponsored…" oninput="buildQuery()"></textarea>
+        </div>
+      </div>
+
+    </div><!-- /panel-post -->
+
+
+    <!-- ═══════════════════════════════════════════════════════
+         DOMAIN MODE
+    ═══════════════════════════════════════════════════════ -->
+    <div class="mode-panel" id="panel-domain">
+
+      <div class="section">
+        <div class="section-label">
+          Target domain
+          <span class="hint-icon" data-hint="Enter the domain you want to search inside. You can include a path to narrow down (e.g. reddit.com/r/netsec). No need to add https://.">?</span>
+        </div>
+        <div class="field">
+          <div class="field-label">Domain <span class="operator-tag">site:</span></div>
+          <input type="text" id="dom-domain" placeholder="e.g. reddit.com or reddit.com/r/netsec" oninput="buildQuery()">
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">What to search for</div>
+
+        <div class="field">
+          <div class="field-label">Search type</div>
+          <div class="radio-group" id="dom-type-group">
+            <label class="radio-pill">
+              <input type="radio" name="dom-type" value="text" checked onchange="buildQuery()"> Text / keyword
+            </label>
+            <label class="radio-pill">
+              <input type="radio" name="dom-type" value="handle" onchange="buildQuery()"> Account handle
+            </label>
+            <label class="radio-pill">
+              <input type="radio" name="dom-type" value="url" onchange="buildQuery()"> URL fragment
+            </label>
+            <label class="radio-pill">
+              <input type="radio" name="dom-type" value="email" onchange="buildQuery()"> Email
+            </label>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-label" id="dom-query-label">
+            Search term <span class="operator-tag">intext:</span>
+          </div>
+          <input type="text" id="dom-query" placeholder="What to search for…" oninput="buildQuery()">
+          <div class="or-note" id="dom-query-hint"></div>
+        </div>
+
+        <div class="field">
+          <div class="field-label">Additional keywords <span class="operator-tag">AND</span></div>
+          <input type="text" id="dom-extra" placeholder="Narrow results further…" oninput="buildQuery()">
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">
+          Date range
+          <span class="hint-icon" data-hint="Filters by Google's indexed date for pages on this domain.">?</span>
+        </div>
+        <div class="date-row">
+          <div class="field">
+            <div class="field-label">After <span class="operator-tag">after:</span></div>
+            <input type="text" id="dom-after" placeholder="2023-01-01" oninput="buildQuery()">
+          </div>
+          <div class="field">
+            <div class="field-label">Before <span class="operator-tag">before:</span></div>
+            <input type="text" id="dom-before" placeholder="2024-12-31" oninput="buildQuery()">
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Modifiers</div>
+        <div class="modifiers">
+
+          <label class="modifier">
+            <input type="checkbox" id="dom-mod-intitle" onchange="buildQuery()">
+            <div class="modifier-body">
+              <div class="modifier-title" onclick="this.previousElementSibling?.click()">
+                Term must appear in page title <span class="operator-tag">intitle:</span>
+              </div>
+              <div class="modifier-desc">
+                High precision — only returns pages where the search term appears in the &lt;title&gt; tag.
+              </div>
+            </div>
+          </label>
+
+          <label class="modifier">
+            <input type="checkbox" id="dom-mod-inurl" onchange="buildQuery()">
+            <div class="modifier-body">
+              <div class="modifier-title" onclick="this.previousElementSibling?.click()">
+                Term must appear in URL <span class="operator-tag">inurl:</span>
+              </div>
+              <div class="modifier-desc">
+                Useful for finding a specific user profile or section within a domain.
+              </div>
+            </div>
+          </label>
+
+          <label class="modifier">
+            <input type="checkbox" id="dom-mod-filetype" onchange="buildQuery()">
+            <div class="modifier-body">
+              <div class="modifier-title" onclick="this.previousElementSibling?.click()">
+                Specific file type <span class="operator-tag">filetype:</span>
+              </div>
+              <div class="modifier-desc">
+                <span class="mono">filetype:pdf</span> — restrict results to a file type (pdf, xls, doc, csv…).
+              </div>
+            </div>
+          </label>
+
+        </div>
+
+        <!-- Filetype input (shown when filetype modifier is checked) -->
+        <div class="field" id="dom-filetype-field" style="display:none; margin-top:10px;">
+          <div class="field-label">File extension <span class="operator-tag">filetype:</span></div>
+          <input type="text" id="dom-filetype" placeholder="pdf" oninput="buildQuery()"
+            style="max-width:120px;">
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Exclusions <span class="hint-icon" data-hint="Subdomains or paths to exclude from this domain search.">?</span></div>
+        <div class="field">
+          <textarea id="dom-exclude" placeholder="e.g. ads, sponsored, shop…" oninput="buildQuery()"></textarea>
+        </div>
+      </div>
+
+    </div><!-- /panel-domain -->
+
+  </div><!-- /controls-panel -->
+</main>
+
+<script>
+// ── State ─────────────────────────────────────────────────────
+let currentMode   = 'profile';
+let currentEngine = localStorage.getItem('ss_engine') || 'google';
+const selectedNets = { profile: null, post: null };
+
+// Network config: site operator path per network per mode
+const NET_CFG = {
+  profile: {
+    facebook:  { site: 'site:facebook.com', path: '/in/',   inurl: 'facebook.com/in/' },
+    instagram: { site: 'site:instagram.com', path: '',      inurl: 'instagram.com/' },
+    twitter:   { site: 'site:twitter.com',   path: '',      inurl: 'twitter.com/' },
+    linkedin:  { site: 'site:linkedin.com/in', path: '/in/', inurl: 'linkedin.com/in/' },
+    tiktok:    { site: 'site:tiktok.com',    path: '',      inurl: 'tiktok.com/@' },
+    youtube:   { site: 'site:youtube.com/@', path: '',      inurl: 'youtube.com/@' },
+    pinterest: { site: 'site:pinterest.com', path: '',      inurl: 'pinterest.com/' },
+  },
+  post: {
+    facebook:  { site: 'site:facebook.com',  excProfile: '-inurl:/user/ -inurl:/profile.php' },
+    instagram: { site: 'site:instagram.com', excProfile: '-inurl:/explore/' },
+    twitter:   { site: 'site:twitter.com',   excProfile: '-inurl:/home' },
+    linkedin:  { site: 'site:linkedin.com',  excProfile: '-inurl:/in/ -inurl:/company/' },
+    tiktok:    { site: 'site:tiktok.com',    excProfile: '' },
+    youtube:   { site: 'site:youtube.com',   excProfile: '-inurl:/channel/ -inurl:/user/' },
+    pinterest: { site: 'site:pinterest.com', excProfile: '' },
+  }
+};
+
+// ── Engine ────────────────────────────────────────────────────
+function setEngine(eng) {
+  currentEngine = eng;
+  localStorage.setItem('ss_engine', eng);
+  document.getElementById('btnGoogle').classList.toggle('active', eng === 'google');
+  document.getElementById('btnBrave').classList.toggle('active', eng === 'brave');
+  document.getElementById('engineHint').textContent =
+    eng === 'google' ? 'Searching with Google' : 'Searching with Brave';
+  buildQuery();
 }
+
+// ── Mode ──────────────────────────────────────────────────────
+function setMode(mode, btn) {
+  currentMode = mode;
+  document.querySelectorAll('.mode-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.mode-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + mode).classList.add('active');
+  buildQuery();
+}
+
+// ── Network pill toggle ───────────────────────────────────────
+function toggleNet(mode, net, btn) {
+  const pills = document.querySelectorAll(`#${mode}-pills .pill`);
+  if (selectedNets[mode] === net) {
+    selectedNets[mode] = null;
+    btn.classList.remove('active');
+  } else {
+    selectedNets[mode] = net;
+    pills.forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  buildQuery();
+}
+
+// ── Helpers ───────────────────────────────────────────────────
+function v(id) {
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : '';
+}
+function checked(id) {
+  const el = document.getElementById(id);
+  return el ? el.checked : false;
+}
+function quote(str) {
+  if (!str) return '';
+  // Already quoted? leave it
+  if (str.startsWith('"') && str.endsWith('"')) return str;
+  return `"${str}"`;
+}
+function parseExclusions(raw) {
+  return raw.split(/[\n,]+/)
+    .map(s => s.trim())
+    .filter(Boolean)
+    .map(s => s.startsWith('"') ? `-${s}` : `-"${s}"`)
+    .join(' ');
+}
+function parseOR(raw) {
+  const terms = raw.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+  if (!terms.length) return '';
+  if (terms.length === 1) return quote(terms[0]);
+  return '(' + terms.map(quote).join(' OR ') + ')';
+}
+
+// ── Query builders ────────────────────────────────────────────
+function buildProfileQuery() {
+  const net    = selectedNets.profile;
+  const cfg    = net ? NET_CFG.profile[net] : null;
+  const name   = v('p-name');
+  const alias  = v('p-alias');
+  const kw     = v('p-keyword');
+  const after  = v('p-after');
+  const before = v('p-before');
+  const excRaw = v('p-exclude');
+
+  const useSite    = checked('p-mod-site');
+  const useInurl   = checked('p-mod-inurl');
+  const useExcGrp  = checked('p-mod-excgroups');
+  const useIntitle = checked('p-mod-intitle');
+
+  const parts = [];
+
+  // site:
+  if (cfg && useSite) parts.push(cfg.site);
+
+  // name
+  if (name) {
+    const nameQ = quote(name);
+    if (alias) {
+      parts.push(`(${nameQ} OR ${quote(alias)})`);
+    } else {
+      parts.push(nameQ);
+    }
+  }
+
+  // intitle:
+  if (useIntitle && name) parts.push(`intitle:${quote(name)}`);
+
+  // inurl:
+  if (useInurl && name && cfg) {
+    const slug = name.replace(/^@/, '').replace(/\s+/g, '').toLowerCase();
+    parts.push(`inurl:${slug}`);
+  }
+
+  // extra keyword
+  if (kw) parts.push(quote(kw));
+
+  // exclude groups/feed
+  if (useExcGrp && net === 'facebook') parts.push('-inurl:groups -inurl:feed -inurl:marketplace');
+
+  // dates
+  if (after)  parts.push(`after:${after}`);
+  if (before) parts.push(`before:${before}`);
+
+  // exclusions
+  if (excRaw) parts.push(parseExclusions(excRaw));
+
+  return parts.join(' ');
+}
+
+function buildPostQuery() {
+  const net    = selectedNets.post;
+  const cfg    = net ? NET_CFG.post[net] : null;
+  const exact  = v('post-exact');
+  const and    = v('post-and');
+  const or     = v('post-or');
+  const author = v('post-author');
+  const after  = v('post-after');
+  const before = v('post-before');
+  const excRaw = v('post-exclude');
+
+  const useSite       = checked('post-mod-site');
+  const useExcProfile = checked('post-mod-excprofile');
+  const useBothTW     = checked('post-mod-twitter-both');
+  const useCache      = checked('post-mod-cache');
+
+  const parts = [];
+
+  // site:
+  if (useBothTW) {
+    parts.push('(site:twitter.com OR site:x.com)');
+  } else if (cfg && useSite) {
+    parts.push(cfg.site);
+  }
+
+  // exact phrase
+  if (exact) parts.push(quote(exact));
+
+  // AND keywords
+  if (and) parts.push(and);
+
+  // OR alternatives
+  if (or) parts.push(parseOR(or));
+
+  // author inurl
+  if (author) {
+    const slug = author.replace(/^@/, '');
+    parts.push(`inurl:${slug}`);
+  }
+
+  // exclude profile pages
+  if (useExcProfile && cfg && cfg.excProfile) parts.push(cfg.excProfile);
+
+  // dates
+  if (after)  parts.push(`after:${after}`);
+  if (before) parts.push(`before:${before}`);
+
+  // exclusions
+  if (excRaw) parts.push(parseExclusions(excRaw));
+
+  // cache hint (informational — shown in query, user should know it's limited)
+  if (useCache) parts.push('/* Tip: try site:web.archive.org to find deleted content */');
+
+  return parts.join(' ');
+}
+
+function buildDomainQuery() {
+  const domain  = v('dom-domain').replace(/^https?:\/\//, '').replace(/\/$/, '');
+  const query   = v('dom-query');
+  const extra   = v('dom-extra');
+  const after   = v('dom-after');
+  const before  = v('dom-before');
+  const excRaw  = v('dom-exclude');
+  const useIntitle  = checked('dom-mod-intitle');
+  const useInurl    = checked('dom-mod-inurl');
+  const useFiletype = checked('dom-mod-filetype');
+  const filetype    = v('dom-filetype');
+  const domType     = document.querySelector('input[name="dom-type"]:checked')?.value || 'text';
+
+  // Show/hide filetype input
+  document.getElementById('dom-filetype-field').style.display =
+    useFiletype ? 'block' : 'none';
+
+  // Update label based on type
+  const labelMap = {
+    text:   ['Search term', 'intext:'],
+    handle: ['Handle / username', 'inurl: or "@"'],
+    url:    ['URL fragment', 'inurl:'],
+    email:  ['Email address', '"@domain"'],
+  };
+  const [labelText, op] = labelMap[domType];
+  document.getElementById('dom-query-label').innerHTML =
+    `${labelText} <span class="operator-tag">${op}</span>`;
+
+  // Hints per type
+  const hintMap = {
+    text:   'Searches page text. Wrap in quotes for an exact phrase.',
+    handle: 'Searches for the handle in the URL and page text. @ prefix is added automatically.',
+    url:    'Searches for a URL fragment using inurl: — finds pages whose URL contains this string.',
+    email:  'Wraps in quotes to search for the literal email or "@domain" pattern.',
+  };
+  document.getElementById('dom-query-hint').textContent = query ? '' : hintMap[domType];
+
+  const parts = [];
+
+  if (domain) parts.push(`site:${domain}`);
+
+  if (query) {
+    switch (domType) {
+      case 'text':
+        parts.push(useIntitle ? `intitle:${quote(query)}` : (useInurl ? `inurl:${query}` : quote(query)));
+        break;
+      case 'handle':
+        parts.push(`"@${query.replace(/^@/, '')}"`);
+        if (useInurl) parts.push(`inurl:${query.replace(/^@/, '')}`);
+        break;
+      case 'url':
+        parts.push(`inurl:${query}`);
+        break;
+      case 'email':
+        parts.push(quote(query));
+        break;
+    }
+  }
+
+  if (extra) parts.push(extra);
+  if (useFiletype && filetype) parts.push(`filetype:${filetype}`);
+  if (after)  parts.push(`after:${after}`);
+  if (before) parts.push(`before:${before}`);
+  if (excRaw) parts.push(parseExclusions(excRaw));
+
+  return parts.join(' ');
+}
+
+// ── Main query builder ────────────────────────────────────────
+function buildQuery() {
+  let query = '';
+  if      (currentMode === 'profile') query = buildProfileQuery();
+  else if (currentMode === 'post')    query = buildPostQuery();
+  else if (currentMode === 'domain')  query = buildDomainQuery();
+
+  const display = document.getElementById('queryDisplay');
+  const btn     = document.getElementById('searchBtn');
+
+  if (query) {
+    display.classList.remove('empty');
+    display.innerHTML = escapeHtml(query) + '<span class="cursor"></span>';
+    btn.disabled = false;
+  } else {
+    display.classList.add('empty');
+    display.innerHTML = 'Start filling in the fields →<span class="cursor"></span>';
+    btn.disabled = true;
+  }
+  display._currentQuery = query;
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Search ────────────────────────────────────────────────────
+function runSearch() {
+  const query = document.getElementById('queryDisplay')._currentQuery;
+  if (!query) return;
+  const encoded = encodeURIComponent(query);
+  const url = currentEngine === 'google'
+    ? `https://www.google.com/search?q=${encoded}`
+    : `https://search.brave.com/search?q=${encoded}`;
+  window.open(url, '_blank');
+}
+
+// ── Copy query ────────────────────────────────────────────────
+function copyQuery() {
+  const query = document.getElementById('queryDisplay')._currentQuery;
+  if (!query) return;
+  navigator.clipboard.writeText(query).then(() => {
+    const btn = document.getElementById('copyQueryBtn');
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = 'Copy';
+      btn.classList.remove('copied');
+    }, 1800);
+  });
+}
+
+// ── Filetype modifier wiring ──────────────────────────────────
+document.getElementById('dom-mod-filetype').addEventListener('change', buildQuery);
+
+// ── Domain type radio wiring ──────────────────────────────────
+document.querySelectorAll('input[name="dom-type"]').forEach(r =>
+  r.addEventListener('change', buildQuery)
+);
+
+// ── Init ──────────────────────────────────────────────────────
+setEngine(currentEngine);
+buildQuery();
+</script>
+</body>
+</html>

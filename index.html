@@ -1,0 +1,49 @@
+
+export default function GoogleDorkBuilder() {
+  const operators = [
+    'site:', 'filetype:', 'intitle:', 'inurl:', 'intext:'
+  ];
+
+  return (
+    <div className="min-h-screen bg-slate-50 p-6">
+      <div className="max-w-5xl mx-auto space-y-6">
+        <div>
+          <h1 className="text-4xl font-bold">SocialShortcuts Dork Builder</h1>
+          <p className="text-slate-600 mt-2">
+            Build advanced Google search strings through a friendly interface.
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="bg-white rounded-3xl shadow p-6">
+            <h2 className="text-xl font-semibold mb-4">Search Builder</h2>
+            <input
+              className="w-full border rounded-xl p-3 mb-3"
+              placeholder="Target domain"
+            />
+            <input
+              className="w-full border rounded-xl p-3 mb-3"
+              placeholder="Keywords"
+            />
+            <select className="w-full border rounded-xl p-3">
+              <option>Select operator</option>
+              {operators.map(op => (
+                <option key={op}>{op}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="bg-white rounded-3xl shadow p-6">
+            <h2 className="text-xl font-semibold mb-4">Generated Dork</h2>
+            <div className="bg-slate-100 rounded-xl p-4 font-mono">
+              site:example.com filetype:pdf confidential
+            </div>
+            <button className="mt-4 px-4 py-2 rounded-2xl bg-black text-white">
+              Search in Google
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

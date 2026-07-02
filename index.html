@@ -185,6 +185,17 @@
       flex-direction: column;
       gap: 8px;
     }
+    .engine-notice {
+      margin: 0 24px;
+      margin-top: 12px;
+      padding: 8px 10px;
+      background: #3a2a12;
+      border: 1px solid #6b4a1a;
+      border-radius: 6px;
+      color: #f0b849;
+      font-size: 11.5px;
+      line-height: 1.5;
+    }
     .search-btn {
       width: 100%;
       padding: 12px;
@@ -477,6 +488,95 @@
       color: var(--white);
     }
 
+    /* Date picker */
+    input[type="date"] {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s;
+      color-scheme: dark;
+    }
+    input[type="date"]:focus { border-color: var(--blue); }
+    input[type="date"]::-webkit-calendar-picker-indicator {
+      filter: invert(55%);
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    input[type="date"]::-webkit-calendar-picker-indicator:hover {
+      filter: invert(75%);
+    }
+
+    /* Collapsible advanced section */
+    .advanced {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .advanced summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 10px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--label);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface);
+      user-select: none;
+    }
+    .advanced summary:hover { color: var(--text); }
+    .advanced summary::-webkit-details-marker { display: none; }
+    .advanced summary .chevron {
+      color: var(--muted);
+      transition: transform 0.15s;
+      font-size: 10px;
+      display: inline-block;
+    }
+    .advanced[open] summary .chevron { transform: rotate(90deg); }
+    .advanced[open] summary { border-bottom: 1px solid var(--border); }
+    .advanced-body {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .advanced-badge {
+      font-size: 10px;
+      background: var(--blue-soft);
+      color: var(--white);
+      padding: 1px 7px;
+      border-radius: 10px;
+    }
+    .summary-left { display: flex; align-items: center; gap: 6px; }
+
+    /* Quick-fill preset chips */
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .chip {
+      padding: 4px 10px;
+      border-radius: 14px;
+      border: 1px dashed var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-size: 11px;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .chip:hover { border-color: var(--blue); color: var(--text); border-style: solid; }
+    .chip.active { border-style: solid; border-color: var(--blue); background: var(--blue-soft); color: var(--white); }
+
     /* Responsive */
     @media (max-width: 768px) {
       main { grid-template-columns: 1fr; }
@@ -523,6 +623,7 @@
       <span class="query-panel-label">▶ Live query</span>
       <button class="copy-btn" id="copyQueryBtn" onclick="copyQuery()">Copy</button>
     </div>
+    <div class="engine-notice" id="engineNotice" style="display:none;"></div>
     <div class="query-display empty" id="queryDisplay">
       Start filling in the fields →<span class="cursor"></span>
     </div>
@@ -609,11 +710,11 @@
         <div class="date-row">
           <div class="field">
             <div class="field-label">After <span class="operator-tag">after:</span></div>
-            <input type="text" id="p-after" placeholder="2023-01-01" oninput="buildQuery()">
+            <input type="date" id="p-after" oninput="buildQuery()">
           </div>
           <div class="field">
             <div class="field-label">Before <span class="operator-tag">before:</span></div>
-            <input type="text" id="p-before" placeholder="2024-12-31" oninput="buildQuery()">
+            <input type="date" id="p-before" oninput="buildQuery()">
           </div>
         </div>
       </div>
@@ -638,32 +739,34 @@
             </div>
           </label>
 
-          <label class="modifier">
-            <input type="checkbox" id="p-mod-inurl" onchange="buildQuery()">
-            <div class="modifier-body">
-              <div class="modifier-title" onclick="this.previousElementSibling?.click()">
-                Force profile URL
-                <span class="operator-tag">inurl:</span>
-              </div>
-              <div class="modifier-desc">
-                <span class="mono">inurl:username</span> — requires the identifier to appear in the URL itself, not just the page text. Strong signal for direct profile hits.
-              </div>
-            </div>
-          </label>
+        </div>
+      </div>
 
-          <label class="modifier">
-            <input type="checkbox" id="p-mod-excgroups" onchange="buildQuery()">
-            <div class="modifier-body">
-              <div class="modifier-title" onclick="this.previousElementSibling?.click()">
-                Exclude groups &amp; feeds
-                <span class="operator-tag">-inurl:</span>
-              </div>
-              <div class="modifier-desc">
-                Adds <span class="mono">-inurl:groups -inurl:feed</span> — removes group posts and feed pages, leaving only direct profile URLs.
-              </div>
-            </div>
-          </label>
+      <div class="section">
+        <div class="section-label">
+          URL pattern
+          <span class="hint-icon" data-hint="Every network structures profile URLs a bit differently — some use a name-based slug, some use a numeric ID, some use both. Use these fields to zero in on the right one.">?</span>
+        </div>
+        <div class="field">
+          <div class="field-label">Include in URL <span class="operator-tag">inurl:</span></div>
+          <input type="text" id="p-url-include" placeholder="e.g. profile.php?id=" oninput="onUrlFieldInput('profile', 'include')">
+          <div class="chip-row" id="p-url-include-chips"></div>
+          <div class="or-note">Only show pages whose web address contains this. Pick a suggestion below or type your own — helpful when a profile has a distinctive URL format.</div>
+        </div>
+        <div class="field">
+          <div class="field-label">Exclude from URL <span class="operator-tag">-inurl:</span></div>
+          <input type="text" id="p-url-exclude" placeholder="e.g. groups, feed" oninput="onUrlFieldInput('profile', 'exclude')">
+          <div class="chip-row" id="p-url-exclude-chips"></div>
+          <div class="or-note">Hide pages whose web address contains this — useful for filtering out individual posts, groups, or videos so only the profile page remains.</div>
+        </div>
+      </div>
 
+      <details class="advanced">
+        <summary>
+          <span class="summary-left">⚙️ Advanced <span class="advanced-badge" id="p-advanced-badge" style="display:none">0</span></span>
+          <span class="chevron">▸</span>
+        </summary>
+        <div class="advanced-body">
           <label class="modifier">
             <input type="checkbox" id="p-mod-intitle" onchange="buildQuery()">
             <div class="modifier-body">
@@ -676,9 +779,8 @@
               </div>
             </div>
           </label>
-
         </div>
-      </div>
+      </details>
 
       <div class="section">
         <div class="section-label">
@@ -746,11 +848,11 @@
         <div class="date-row">
           <div class="field">
             <div class="field-label">After <span class="operator-tag">after:</span></div>
-            <input type="text" id="post-after" placeholder="2023-01-01" oninput="buildQuery()">
+            <input type="date" id="post-after" oninput="buildQuery()">
           </div>
           <div class="field">
             <div class="field-label">Before <span class="operator-tag">before:</span></div>
-            <input type="text" id="post-before" placeholder="2024-12-31" oninput="buildQuery()">
+            <input type="date" id="post-before" oninput="buildQuery()">
           </div>
         </div>
       </div>
@@ -771,18 +873,34 @@
             </div>
           </label>
 
-          <label class="modifier">
-            <input type="checkbox" id="post-mod-excprofile" onchange="buildQuery()">
-            <div class="modifier-body">
-              <div class="modifier-title" onclick="this.previousElementSibling?.click()">
-                Exclude profile pages <span class="operator-tag">-inurl:</span>
-              </div>
-              <div class="modifier-desc">
-                Adds <span class="mono">-inurl:/in/ -inurl:/user/</span> — removes profile pages from results, targeting only individual posts.
-              </div>
-            </div>
-          </label>
+        </div>
+      </div>
 
+      <div class="section">
+        <div class="section-label">
+          URL pattern
+          <span class="hint-icon" data-hint="Posts and profiles usually live at different URL shapes on the same site. Use these to keep only post pages out of your results, or to exclude profile pages entirely.">?</span>
+        </div>
+        <div class="field">
+          <div class="field-label">Include in URL <span class="operator-tag">inurl:</span></div>
+          <input type="text" id="post-url-include" placeholder="e.g. /status/" oninput="onUrlFieldInput('post', 'include')">
+          <div class="chip-row" id="post-url-include-chips"></div>
+          <div class="or-note">Only show pages whose web address contains this — pick a suggestion to target individual posts and skip profile pages.</div>
+        </div>
+        <div class="field">
+          <div class="field-label">Exclude from URL <span class="operator-tag">-inurl:</span></div>
+          <input type="text" id="post-url-exclude" placeholder="e.g. profile.php?id=" oninput="onUrlFieldInput('post', 'exclude')">
+          <div class="chip-row" id="post-url-exclude-chips"></div>
+          <div class="or-note">Hide pages whose web address contains this — handy for keeping profile pages out of post results.</div>
+        </div>
+      </div>
+
+      <details class="advanced">
+        <summary>
+          <span class="summary-left">⚙️ Advanced <span class="advanced-badge" id="post-advanced-badge" style="display:none">0</span></span>
+          <span class="chevron">▸</span>
+        </summary>
+        <div class="advanced-body">
           <label class="modifier">
             <input type="checkbox" id="post-mod-twitter-both" onchange="buildQuery()">
             <div class="modifier-body">
@@ -795,20 +913,17 @@
             </div>
           </label>
 
-          <label class="modifier">
-            <input type="checkbox" id="post-mod-cache" onchange="buildQuery()">
+          <div class="modifier" style="cursor:default;">
+            <span style="font-size:14px;">💡</span>
             <div class="modifier-body">
-              <div class="modifier-title" onclick="this.previousElementSibling?.click()">
-                Include deleted / cached content hint
-              </div>
+              <div class="modifier-title">Looking for deleted content?</div>
               <div class="modifier-desc">
-                Appends <span class="mono">cache:</span> note as a reminder — Google cache access is limited, but searching <span class="mono">site:web.archive.org</span> can recover deleted posts.
+                Google/Brave cache access is unreliable these days. Try searching <span class="mono">site:web.archive.org</span> separately in the Domain tab instead.
               </div>
             </div>
-          </label>
-
+          </div>
         </div>
-      </div>
+      </details>
 
       <div class="section">
         <div class="section-label">Exclusions <span class="hint-icon" data-hint="Terms to exclude from results. Each becomes -term or -&quot;phrase&quot;.">?</span></div>
@@ -879,18 +994,38 @@
         <div class="date-row">
           <div class="field">
             <div class="field-label">After <span class="operator-tag">after:</span></div>
-            <input type="text" id="dom-after" placeholder="2023-01-01" oninput="buildQuery()">
+            <input type="date" id="dom-after" oninput="buildQuery()">
           </div>
           <div class="field">
             <div class="field-label">Before <span class="operator-tag">before:</span></div>
-            <input type="text" id="dom-before" placeholder="2024-12-31" oninput="buildQuery()">
+            <input type="date" id="dom-before" oninput="buildQuery()">
           </div>
         </div>
       </div>
 
       <div class="section">
-        <div class="section-label">Modifiers</div>
-        <div class="modifiers">
+        <div class="section-label">
+          URL pattern
+          <span class="hint-icon" data-hint="Narrow the search to (or away from) a specific section of the domain based on its web address — e.g. only /user/ pages, or everything except /shop/.">?</span>
+        </div>
+        <div class="field">
+          <div class="field-label">Include in URL <span class="operator-tag">inurl:</span></div>
+          <input type="text" id="dom-url-include" placeholder="e.g. /user/, /profile/" oninput="buildQuery()">
+          <div class="or-note">Only show pages whose web address contains this.</div>
+        </div>
+        <div class="field">
+          <div class="field-label">Exclude from URL <span class="operator-tag">-inurl:</span></div>
+          <input type="text" id="dom-url-exclude" placeholder="e.g. /shop/, /ads/" oninput="buildQuery()">
+          <div class="or-note">Hide pages whose web address contains this.</div>
+        </div>
+      </div>
+
+      <details class="advanced">
+        <summary>
+          <span class="summary-left">⚙️ Advanced <span class="advanced-badge" id="dom-advanced-badge" style="display:none">0</span></span>
+          <span class="chevron">▸</span>
+        </summary>
+        <div class="advanced-body">
 
           <label class="modifier">
             <input type="checkbox" id="dom-mod-intitle" onchange="buildQuery()">
@@ -900,18 +1035,6 @@
               </div>
               <div class="modifier-desc">
                 High precision — only returns pages where the search term appears in the &lt;title&gt; tag.
-              </div>
-            </div>
-          </label>
-
-          <label class="modifier">
-            <input type="checkbox" id="dom-mod-inurl" onchange="buildQuery()">
-            <div class="modifier-body">
-              <div class="modifier-title" onclick="this.previousElementSibling?.click()">
-                Term must appear in URL <span class="operator-tag">inurl:</span>
-              </div>
-              <div class="modifier-desc">
-                Useful for finding a specific user profile or section within a domain.
               </div>
             </div>
           </label>
@@ -928,15 +1051,15 @@
             </div>
           </label>
 
-        </div>
+          <!-- Filetype input (shown when filetype modifier is checked) -->
+          <div class="field" id="dom-filetype-field" style="display:none;">
+            <div class="field-label">File extension <span class="operator-tag">filetype:</span></div>
+            <input type="text" id="dom-filetype" placeholder="pdf" oninput="buildQuery()"
+              style="max-width:120px;">
+          </div>
 
-        <!-- Filetype input (shown when filetype modifier is checked) -->
-        <div class="field" id="dom-filetype-field" style="display:none; margin-top:10px;">
-          <div class="field-label">File extension <span class="operator-tag">filetype:</span></div>
-          <input type="text" id="dom-filetype" placeholder="pdf" oninput="buildQuery()"
-            style="max-width:120px;">
         </div>
-      </div>
+      </details>
 
       <div class="section">
         <div class="section-label">Exclusions <span class="hint-icon" data-hint="Subdomains or paths to exclude from this domain search.">?</span></div>
@@ -956,25 +1079,44 @@ let currentMode   = 'profile';
 let currentEngine = localStorage.getItem('ss_engine') || 'google';
 const selectedNets = { profile: null, post: null };
 
-// Network config: site operator path per network per mode
+// Network config: site operator + suggested URL-pattern chips per network per mode.
+// Every network structures profile vs. post URLs differently, so each gets its
+// own quick-fill suggestions instead of one-size-fits-all logic.
 const NET_CFG = {
   profile: {
-    facebook:  { site: 'site:facebook.com', path: '/in/',   inurl: 'facebook.com/in/' },
-    instagram: { site: 'site:instagram.com', path: '',      inurl: 'instagram.com/' },
-    twitter:   { site: 'site:twitter.com',   path: '',      inurl: 'twitter.com/' },
-    linkedin:  { site: 'site:linkedin.com/in', path: '/in/', inurl: 'linkedin.com/in/' },
-    tiktok:    { site: 'site:tiktok.com',    path: '',      inurl: 'tiktok.com/@' },
-    youtube:   { site: 'site:youtube.com/@', path: '',      inurl: 'youtube.com/@' },
-    pinterest: { site: 'site:pinterest.com', path: '',      inurl: 'pinterest.com/' },
+    facebook:  { site: 'site:facebook.com',
+      chips: { include: [{ label: 'Numeric ID (profile.php?id=)', val: 'profile.php?id=' }],
+               exclude: [{ label: 'No groups / feed / marketplace', val: 'groups, feed, marketplace' }] } },
+    instagram: { site: 'site:instagram.com',
+      chips: { exclude: [{ label: 'No posts or reels', val: '/p/, /reel/, /tv/' }] } },
+    twitter:   { site: 'site:twitter.com',
+      chips: { exclude: [{ label: 'No individual tweets', val: '/status/' }] } },
+    linkedin:  { site: 'site:linkedin.com/in',
+      chips: { exclude: [{ label: 'No posts or articles', val: '/posts/, /pulse/' }] } },
+    tiktok:    { site: 'site:tiktok.com',
+      chips: { exclude: [{ label: 'No individual videos', val: '/video/' }] } },
+    youtube:   { site: 'site:youtube.com/@',
+      chips: { exclude: [{ label: 'No individual videos', val: 'watch' }] } },
+    pinterest: { site: 'site:pinterest.com',
+      chips: { exclude: [{ label: 'No individual pins', val: '/pin/' }] } },
   },
   post: {
-    facebook:  { site: 'site:facebook.com',  excProfile: '-inurl:/user/ -inurl:/profile.php' },
-    instagram: { site: 'site:instagram.com', excProfile: '-inurl:/explore/' },
-    twitter:   { site: 'site:twitter.com',   excProfile: '-inurl:/home' },
-    linkedin:  { site: 'site:linkedin.com',  excProfile: '-inurl:/in/ -inurl:/company/' },
-    tiktok:    { site: 'site:tiktok.com',    excProfile: '' },
-    youtube:   { site: 'site:youtube.com',   excProfile: '-inurl:/channel/ -inurl:/user/' },
-    pinterest: { site: 'site:pinterest.com', excProfile: '' },
+    facebook:  { site: 'site:facebook.com',
+      chips: { exclude: [{ label: 'No profile pages', val: 'profile.php?id=, /user/' }] } },
+    instagram: { site: 'site:instagram.com',
+      chips: { include: [{ label: 'Only posts / reels', val: '/p/, /reel/, /tv/' }] } },
+    twitter:   { site: 'site:twitter.com',
+      chips: { include: [{ label: 'Only individual tweets', val: '/status/' }] } },
+    linkedin:  { site: 'site:linkedin.com',
+      chips: { include: [{ label: 'Only posts / articles', val: '/posts/, /pulse/' }],
+               exclude: [{ label: 'No profile / company pages', val: '/in/, /company/' }] } },
+    tiktok:    { site: 'site:tiktok.com',
+      chips: { include: [{ label: 'Only individual videos', val: '/video/' }] } },
+    youtube:   { site: 'site:youtube.com',
+      chips: { include: [{ label: 'Only individual videos', val: 'watch' }],
+               exclude: [{ label: 'No channel pages', val: '/channel/, /user/' }] } },
+    pinterest: { site: 'site:pinterest.com',
+      chips: { include: [{ label: 'Only individual pins', val: '/pin/' }] } },
   }
 };
 
@@ -1010,10 +1152,75 @@ function toggleNet(mode, net, btn) {
     pills.forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
   }
+  if (mode === 'profile' || mode === 'post') renderUrlChips(mode);
+  buildQuery();
+}
+
+// ── URL pattern chips (per-network quick fills) ────────────────
+function fieldPrefix(mode) { return mode === 'profile' ? 'p' : 'post'; }
+
+function renderUrlChips(mode) {
+  const prefix   = fieldPrefix(mode);
+  const incWrap  = document.getElementById(`${prefix}-url-include-chips`);
+  const excWrap  = document.getElementById(`${prefix}-url-exclude-chips`);
+  if (!incWrap || !excWrap) return;
+  incWrap.innerHTML = '';
+  excWrap.innerHTML = '';
+  const net = selectedNets[mode];
+  const cfg = net ? NET_CFG[mode][net] : null;
+  if (!cfg || !cfg.chips) return;
+  (cfg.chips.include || []).forEach(c => incWrap.appendChild(makeUrlChip(mode, 'include', c)));
+  (cfg.chips.exclude || []).forEach(c => excWrap.appendChild(makeUrlChip(mode, 'exclude', c)));
+}
+
+function makeUrlChip(mode, kind, c) {
+  const prefix  = fieldPrefix(mode);
+  const fieldId = `${prefix}-url-${kind}`;
+  const field   = document.getElementById(fieldId);
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'chip';
+  btn.textContent = c.label;
+  if (field && field.value.trim() === c.val) btn.classList.add('active');
+  btn.onclick = () => {
+    if (field.value.trim() === c.val) {
+      field.value = '';
+      btn.classList.remove('active');
+    } else {
+      field.value = c.val;
+      btn.parentElement.querySelectorAll('.chip').forEach(x => x.classList.remove('active'));
+      btn.classList.add('active');
+    }
+    buildQuery();
+  };
+  return btn;
+}
+
+// Keep chip highlight in sync when the user types in the field manually
+function onUrlFieldInput(mode, kind) {
+  const prefix = fieldPrefix(mode);
+  const wrap = document.getElementById(`${prefix}-url-${kind}-chips`);
+  if (wrap) wrap.querySelectorAll('.chip').forEach(chip => chip.classList.remove('active'));
   buildQuery();
 }
 
 // ── Helpers ───────────────────────────────────────────────────
+// Not every engine supports the same operators. Google supports all of these;
+// Brave's official operator list (search.brave.com/help/operators) does NOT
+// include inurl:, after:, or before: — sending them makes Brave treat the
+// text literally, which tanks the results ("too few matches found").
+const ENGINE_UNSUPPORTED = {
+  google: new Set(),
+  brave:  new Set(['inurl', 'after', 'before']),
+};
+const OP_LABELS = { inurl: 'URL matching (Include/Exclude/Posted by)', after: 'Start date', before: 'End date' };
+
+// Tag a query fragment with the operator it relies on, so the final
+// assembly step can drop it for engines that don't support it.
+function op(name, text) {
+  return text ? { op: name, text } : null;
+}
+
 function v(id) {
   const el = document.getElementById(id);
   return el ? el.value.trim() : '';
@@ -1041,6 +1248,26 @@ function parseOR(raw) {
   if (terms.length === 1) return quote(terms[0]);
   return '(' + terms.map(quote).join(' OR ') + ')';
 }
+// Quote an inurl: value only when it has characters Google might otherwise
+// mis-tokenize (., ?, =, &, spaces…) — keeps simple slugs like "groups" clean.
+function quoteInurl(term) {
+  return /[^a-zA-Z0-9_\-\/@]/.test(term) ? `"${term}"` : term;
+}
+// "Include in URL" field → one or more inurl: terms, OR'd together
+function parseInurlInclude(raw) {
+  const terms = raw.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+  if (!terms.length) return '';
+  const wrapped = terms.map(t => `inurl:${quoteInurl(t)}`);
+  return terms.length === 1 ? wrapped[0] : '(' + wrapped.join(' OR ') + ')';
+}
+// "Exclude from URL" field → one -inurl: term per entry (each independently excluded)
+function parseInurlExclude(raw) {
+  return raw.split(/[\n,]+/)
+    .map(s => s.trim())
+    .filter(Boolean)
+    .map(t => `-inurl:${quoteInurl(t)}`)
+    .join(' ');
+}
 
 // ── Query builders ────────────────────────────────────────────
 function buildProfileQuery() {
@@ -1052,10 +1279,10 @@ function buildProfileQuery() {
   const after  = v('p-after');
   const before = v('p-before');
   const excRaw = v('p-exclude');
+  const urlInc = v('p-url-include');
+  const urlExc = v('p-url-exclude');
 
   const useSite    = checked('p-mod-site');
-  const useInurl   = checked('p-mod-inurl');
-  const useExcGrp  = checked('p-mod-excgroups');
   const useIntitle = checked('p-mod-intitle');
 
   const parts = [];
@@ -1073,29 +1300,24 @@ function buildProfileQuery() {
     }
   }
 
-  // intitle:
+  // intitle: (Brave supports this one, so no tag needed — but tagging is harmless)
   if (useIntitle && name) parts.push(`intitle:${quote(name)}`);
-
-  // inurl:
-  if (useInurl && name && cfg) {
-    const slug = name.replace(/^@/, '').replace(/\s+/g, '').toLowerCase();
-    parts.push(`inurl:${slug}`);
-  }
 
   // extra keyword
   if (kw) parts.push(quote(kw));
 
-  // exclude groups/feed
-  if (useExcGrp && net === 'facebook') parts.push('-inurl:groups -inurl:feed -inurl:marketplace');
+  // URL pattern (include / exclude) — inurl: is Google-only
+  if (urlInc) parts.push(op('inurl', parseInurlInclude(urlInc)));
+  if (urlExc) parts.push(op('inurl', parseInurlExclude(urlExc)));
 
-  // dates
-  if (after)  parts.push(`after:${after}`);
-  if (before) parts.push(`before:${before}`);
+  // dates — after:/before: are Google-only
+  if (after)  parts.push(op('after', `after:${after}`));
+  if (before) parts.push(op('before', `before:${before}`));
 
   // exclusions
   if (excRaw) parts.push(parseExclusions(excRaw));
 
-  return parts.join(' ');
+  return parts;
 }
 
 function buildPostQuery() {
@@ -1108,11 +1330,11 @@ function buildPostQuery() {
   const after  = v('post-after');
   const before = v('post-before');
   const excRaw = v('post-exclude');
+  const urlInc = v('post-url-include');
+  const urlExc = v('post-url-exclude');
 
   const useSite       = checked('post-mod-site');
-  const useExcProfile = checked('post-mod-excprofile');
   const useBothTW     = checked('post-mod-twitter-both');
-  const useCache      = checked('post-mod-cache');
 
   const parts = [];
 
@@ -1132,26 +1354,24 @@ function buildPostQuery() {
   // OR alternatives
   if (or) parts.push(parseOR(or));
 
-  // author inurl
+  // author inurl — Google-only
   if (author) {
     const slug = author.replace(/^@/, '');
-    parts.push(`inurl:${slug}`);
+    parts.push(op('inurl', `inurl:${slug}`));
   }
 
-  // exclude profile pages
-  if (useExcProfile && cfg && cfg.excProfile) parts.push(cfg.excProfile);
+  // URL pattern (include / exclude) — Google-only
+  if (urlInc) parts.push(op('inurl', parseInurlInclude(urlInc)));
+  if (urlExc) parts.push(op('inurl', parseInurlExclude(urlExc)));
 
-  // dates
-  if (after)  parts.push(`after:${after}`);
-  if (before) parts.push(`before:${before}`);
+  // dates — Google-only
+  if (after)  parts.push(op('after', `after:${after}`));
+  if (before) parts.push(op('before', `before:${before}`));
 
   // exclusions
   if (excRaw) parts.push(parseExclusions(excRaw));
 
-  // cache hint (informational — shown in query, user should know it's limited)
-  if (useCache) parts.push('/* Tip: try site:web.archive.org to find deleted content */');
-
-  return parts.join(' ');
+  return parts;
 }
 
 function buildDomainQuery() {
@@ -1161,8 +1381,9 @@ function buildDomainQuery() {
   const after   = v('dom-after');
   const before  = v('dom-before');
   const excRaw  = v('dom-exclude');
+  const urlInc  = v('dom-url-include');
+  const urlExc  = v('dom-url-exclude');
   const useIntitle  = checked('dom-mod-intitle');
-  const useInurl    = checked('dom-mod-inurl');
   const useFiletype = checked('dom-mod-filetype');
   const filetype    = v('dom-filetype');
   const domType     = document.querySelector('input[name="dom-type"]:checked')?.value || 'text';
@@ -1178,15 +1399,15 @@ function buildDomainQuery() {
     url:    ['URL fragment', 'inurl:'],
     email:  ['Email address', '"@domain"'],
   };
-  const [labelText, op] = labelMap[domType];
+  const [labelText, opTag] = labelMap[domType];
   document.getElementById('dom-query-label').innerHTML =
-    `${labelText} <span class="operator-tag">${op}</span>`;
+    `${labelText} <span class="operator-tag">${opTag}</span>`;
 
   // Hints per type
   const hintMap = {
     text:   'Searches page text. Wrap in quotes for an exact phrase.',
     handle: 'Searches for the handle in the URL and page text. @ prefix is added automatically.',
-    url:    'Searches for a URL fragment using inurl: — finds pages whose URL contains this string.',
+    url:    'Searches for a URL fragment using inurl: — finds pages whose URL contains this string. Not supported on Brave.',
     email:  'Wraps in quotes to search for the literal email or "@domain" pattern.',
   };
   document.getElementById('dom-query-hint').textContent = query ? '' : hintMap[domType];
@@ -1198,14 +1419,13 @@ function buildDomainQuery() {
   if (query) {
     switch (domType) {
       case 'text':
-        parts.push(useIntitle ? `intitle:${quote(query)}` : (useInurl ? `inurl:${query}` : quote(query)));
+        parts.push(useIntitle ? `intitle:${quote(query)}` : quote(query));
         break;
       case 'handle':
         parts.push(`"@${query.replace(/^@/, '')}"`);
-        if (useInurl) parts.push(`inurl:${query.replace(/^@/, '')}`);
         break;
       case 'url':
-        parts.push(`inurl:${query}`);
+        parts.push(op('inurl', `inurl:${query}`));
         break;
       case 'email':
         parts.push(quote(query));
@@ -1214,20 +1434,61 @@ function buildDomainQuery() {
   }
 
   if (extra) parts.push(extra);
+
+  // URL pattern (include / exclude) — Google-only
+  if (urlInc) parts.push(op('inurl', parseInurlInclude(urlInc)));
+  if (urlExc) parts.push(op('inurl', parseInurlExclude(urlExc)));
+
   if (useFiletype && filetype) parts.push(`filetype:${filetype}`);
-  if (after)  parts.push(`after:${after}`);
-  if (before) parts.push(`before:${before}`);
+  if (after)  parts.push(op('after', `after:${after}`));
+  if (before) parts.push(op('before', `before:${before}`));
   if (excRaw) parts.push(parseExclusions(excRaw));
 
-  return parts.join(' ');
+  return parts;
+}
+
+// ── Engine-aware assembly ───────────────────────────────────────
+// Takes the raw parts array (plain strings + {op,text} fragments) from a
+// build*Query() function and drops anything the active engine can't handle.
+function assembleForEngine(rawParts, engine) {
+  const unsupported = ENGINE_UNSUPPORTED[engine] || new Set();
+  const kept = [];
+  const omittedOps = new Set();
+  rawParts.forEach(p => {
+    if (!p) return;
+    if (typeof p === 'string') { kept.push(p); return; }
+    if (unsupported.has(p.op)) { omittedOps.add(p.op); return; }
+    kept.push(p.text);
+  });
+  return { query: kept.join(' '), omittedOps: Array.from(omittedOps) };
+}
+
+// ── Advanced section badges (shows how many hidden options are active) ──
+function updateAdvancedBadges() {
+  document.querySelectorAll('.advanced').forEach(det => {
+    const badge = det.querySelector('.advanced-badge');
+    if (!badge) return;
+    const count = det.querySelectorAll('input[type="checkbox"]:checked').length;
+    if (count > 0) {
+      badge.textContent = count;
+      badge.style.display = 'inline-block';
+    } else {
+      badge.style.display = 'none';
+    }
+  });
 }
 
 // ── Main query builder ────────────────────────────────────────
 function buildQuery() {
-  let query = '';
-  if      (currentMode === 'profile') query = buildProfileQuery();
-  else if (currentMode === 'post')    query = buildPostQuery();
-  else if (currentMode === 'domain')  query = buildDomainQuery();
+  let rawParts = [];
+  if      (currentMode === 'profile') rawParts = buildProfileQuery();
+  else if (currentMode === 'post')    rawParts = buildPostQuery();
+  else if (currentMode === 'domain')  rawParts = buildDomainQuery();
+
+  const { query, omittedOps } = assembleForEngine(rawParts, currentEngine);
+
+  updateAdvancedBadges();
+  renderEngineNotice(omittedOps);
 
   const display = document.getElementById('queryDisplay');
   const btn     = document.getElementById('searchBtn');
@@ -1244,18 +1505,70 @@ function buildQuery() {
   display._currentQuery = query;
 }
 
+// ── Engine compatibility notice ─────────────────────────────────
+function renderEngineNotice(omittedOps) {
+  const el = document.getElementById('engineNotice');
+  if (!el) return;
+  if (!omittedOps.length || currentEngine !== 'brave') {
+    el.style.display = 'none';
+    el.textContent = '';
+    return;
+  }
+  const labels = omittedOps.map(o => OP_LABELS[o] || o).join(', ');
+  let msg = `⚠ Brave doesn't support: ${labels} — left out of the query below so it doesn't break your search.`;
+  if (omittedOps.includes('after')) {
+    const tf = braveTimeRangeParam();
+    const tfLabel = { pd: 'past day', pw: 'past week', pm: 'past month', py: 'past year' }[tf];
+    msg += tfLabel
+      ? ` Brave's "${tfLabel}" filter will be applied instead when you hit Search.`
+      : ' Brave has no filter that covers a date this far back — try Google for precise date filtering.';
+  }
+  el.style.display = 'block';
+  el.textContent = msg;
+}
+
 function escapeHtml(str) {
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 // ── Search ────────────────────────────────────────────────────
+// Brave's public search URL has no exact before:/after: equivalent, but it
+// does accept a coarse "time range" param (tf=pd/pw/pm/py = past day/week/
+// month/year, anchored to today). We approximate "after: X" with the
+// smallest bucket that covers X — only when no "before:" date is set,
+// since Brave's buckets can't express an arbitrary historical window.
+const AFTER_FIELD_BY_MODE  = { profile: 'p-after',    post: 'post-after',    domain: 'dom-after' };
+const BEFORE_FIELD_BY_MODE = { profile: 'p-before',   post: 'post-before',   domain: 'dom-before' };
+
+function braveTimeRangeParam() {
+  const afterId  = AFTER_FIELD_BY_MODE[currentMode];
+  const beforeId = BEFORE_FIELD_BY_MODE[currentMode];
+  if (!afterId) return '';
+  const after  = v(afterId);
+  const before = beforeId ? v(beforeId) : '';
+  if (!after || before) return '';
+  const afterDate = new Date(after + 'T00:00:00');
+  if (isNaN(afterDate.getTime())) return '';
+  const diffDays = Math.round((Date.now() - afterDate.getTime()) / 86400000);
+  if (diffDays <= 1)   return 'pd';
+  if (diffDays <= 7)   return 'pw';
+  if (diffDays <= 31)  return 'pm';
+  if (diffDays <= 366) return 'py';
+  return ''; // older than a year — no Brave bucket covers it
+}
+
 function runSearch() {
   const query = document.getElementById('queryDisplay')._currentQuery;
   if (!query) return;
   const encoded = encodeURIComponent(query);
-  const url = currentEngine === 'google'
-    ? `https://www.google.com/search?q=${encoded}`
-    : `https://search.brave.com/search?q=${encoded}`;
+  let url;
+  if (currentEngine === 'google') {
+    url = `https://www.google.com/search?q=${encoded}`;
+  } else {
+    url = `https://search.brave.com/search?q=${encoded}`;
+    const tf = braveTimeRangeParam();
+    if (tf) url += `&tf=${tf}`;
+  }
   window.open(url, '_blank');
 }
 

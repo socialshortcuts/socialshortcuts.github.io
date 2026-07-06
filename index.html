@@ -776,16 +776,17 @@
       <div class="section">
         <div class="section-label">
           Network
-          <span class="hint-icon" data-hint="Selects the site: operator. You can deselect below to search for mentions of the profile across any site.">?</span>
+          <span class="hint-icon" data-hint="Selects the site: operator. Pick more than one network to search all of them at once (combined with OR). Deselect all to search across any site.">?</span>
         </div>
         <div class="pills" id="profile-pills">
-          <button class="pill" data-net="facebook" onclick="toggleNet('profile', 'facebook', this)">📘 Facebook</button>
-          <button class="pill" data-net="instagram" onclick="toggleNet('profile', 'instagram', this)">📸 Instagram</button>
-          <button class="pill" data-net="twitter" onclick="toggleNet('profile', 'twitter', this)">🐦 X / Twitter</button>
-          <button class="pill" data-net="linkedin" onclick="toggleNet('profile', 'linkedin', this)">💼 LinkedIn</button>
-          <button class="pill" data-net="tiktok" onclick="toggleNet('profile', 'tiktok', this)">🎵 TikTok</button>
-          <button class="pill" data-net="youtube" onclick="toggleNet('profile', 'youtube', this)">▶️ YouTube</button>
-          <button class="pill" data-net="pinterest" onclick="toggleNet('profile', 'pinterest', this)">📌 Pinterest</button>
+          <button class="pill" data-net="facebook" onclick="toggleNet('profile', 'facebook', this)" aria-pressed="false">📘 Facebook</button>
+          <button class="pill" data-net="instagram" onclick="toggleNet('profile', 'instagram', this)" aria-pressed="false">📸 Instagram</button>
+          <button class="pill" data-net="twitter" onclick="toggleNet('profile', 'twitter', this)" aria-pressed="false">🐦 X / Twitter</button>
+          <button class="pill" data-net="linkedin" onclick="toggleNet('profile', 'linkedin', this)" aria-pressed="false">💼 LinkedIn</button>
+          <button class="pill" data-net="tiktok" onclick="toggleNet('profile', 'tiktok', this)" aria-pressed="false">🎵 TikTok</button>
+          <button class="pill" data-net="youtube" onclick="toggleNet('profile', 'youtube', this)" aria-pressed="false">▶️ YouTube</button>
+          <button class="pill" data-net="pinterest" onclick="toggleNet('profile', 'pinterest', this)" aria-pressed="false">📌 Pinterest</button>
+          <button class="pill" data-net="github" onclick="toggleNet('profile', 'github', this)" aria-pressed="false">🐙 GitHub</button>
         </div>
       </div>
 
@@ -922,16 +923,17 @@
       <div class="section">
         <div class="section-label">
           Network
-          <span class="hint-icon" data-hint="Each network gets a tailored site: operator. X/Twitter searches both x.com and twitter.com.">?</span>
+          <span class="hint-icon" data-hint="Each network gets a tailored site: operator. Pick more than one to search all of them at once (combined with OR). X/Twitter can also search both x.com and twitter.com.">?</span>
         </div>
         <div class="pills" id="post-pills">
-          <button class="pill" data-net="facebook" onclick="toggleNet('post', 'facebook', this)">📘 Facebook</button>
-          <button class="pill" data-net="instagram" onclick="toggleNet('post', 'instagram', this)">📸 Instagram</button>
-          <button class="pill" data-net="twitter" onclick="toggleNet('post', 'twitter', this)">🐦 X / Twitter</button>
-          <button class="pill" data-net="linkedin" onclick="toggleNet('post', 'linkedin', this)">💼 LinkedIn</button>
-          <button class="pill" data-net="tiktok" onclick="toggleNet('post', 'tiktok', this)">🎵 TikTok</button>
-          <button class="pill" data-net="youtube" onclick="toggleNet('post', 'youtube', this)">▶️ YouTube</button>
-          <button class="pill" data-net="pinterest" onclick="toggleNet('post', 'pinterest', this)">📌 Pinterest</button>
+          <button class="pill" data-net="facebook" onclick="toggleNet('post', 'facebook', this)" aria-pressed="false">📘 Facebook</button>
+          <button class="pill" data-net="instagram" onclick="toggleNet('post', 'instagram', this)" aria-pressed="false">📸 Instagram</button>
+          <button class="pill" data-net="twitter" onclick="toggleNet('post', 'twitter', this)" aria-pressed="false">🐦 X / Twitter</button>
+          <button class="pill" data-net="linkedin" onclick="toggleNet('post', 'linkedin', this)" aria-pressed="false">💼 LinkedIn</button>
+          <button class="pill" data-net="tiktok" onclick="toggleNet('post', 'tiktok', this)" aria-pressed="false">🎵 TikTok</button>
+          <button class="pill" data-net="youtube" onclick="toggleNet('post', 'youtube', this)" aria-pressed="false">▶️ YouTube</button>
+          <button class="pill" data-net="pinterest" onclick="toggleNet('post', 'pinterest', this)" aria-pressed="false">📌 Pinterest</button>
+          <button class="pill" data-net="github" onclick="toggleNet('post', 'github', this)" aria-pressed="false">🐙 GitHub</button>
         </div>
       </div>
 
@@ -1204,7 +1206,7 @@
 // ── State ─────────────────────────────────────────────────────
 let currentMode   = 'profile';
 let currentEngine = localStorage.getItem('ss_engine') || 'google';
-const selectedNets = { profile: null, post: null };
+const selectedNets = { profile: new Set(), post: new Set() };
 
 // ── Form persistence ─────────────────────────────────────────
 // Everything typed stays local — saved to localStorage on every change and
@@ -1225,7 +1227,11 @@ const RADIO_GROUP_NAMES = ['dom-type'];
 
 function saveFormState() {
   try {
-    const state = { mode: currentMode, nets: selectedNets, text: {}, checks: {}, radios: {} };
+    const state = {
+      mode: currentMode,
+      nets: { profile: [...selectedNets.profile], post: [...selectedNets.post] },
+      text: {}, checks: {}, radios: {},
+    };
     TEXT_FIELD_IDS.forEach(id => { const el = document.getElementById(id); if (el) state.text[id] = el.value; });
     CHECKBOX_FIELD_IDS.forEach(id => { const el = document.getElementById(id); if (el) state.checks[id] = el.checked; });
     RADIO_GROUP_NAMES.forEach(name => {
@@ -1250,9 +1256,15 @@ function restoreFormState() {
 
   if (state.nets) {
     ['profile', 'post'].forEach(mode => {
-      selectedNets[mode] = state.nets[mode] || null;
+      const saved = state.nets[mode];
+      // Backward-compatible with the old single-network string format
+      // (pre-multi-select), in addition to the current array format.
+      const list = Array.isArray(saved) ? saved : (saved ? [saved] : []);
+      selectedNets[mode] = new Set(list.filter(net => NET_CFG[mode][net]));
       document.querySelectorAll(`#${mode}-pills .pill`).forEach(p => {
-        p.classList.toggle('active', p.dataset.net === selectedNets[mode]);
+        const active = selectedNets[mode].has(p.dataset.net);
+        p.classList.toggle('active', active);
+        p.setAttribute('aria-pressed', String(active));
       });
       renderUrlChips(mode);
       updateSiteModifierState(mode);
@@ -1272,6 +1284,14 @@ function restoreFormState() {
 // Network config: site operator + suggested URL-pattern chips per network per mode.
 // Every network structures profile vs. post URLs differently, so each gets its
 // own quick-fill suggestions instead of one-size-fits-all logic.
+// Short labels (with the same emoji used on the pills) for tagging chips
+// when multiple networks are selected at once.
+const NET_LABELS = {
+  facebook: '📘 Facebook', instagram: '📸 Instagram', twitter: '🐦 X/Twitter',
+  linkedin: '💼 LinkedIn', tiktok: '🎵 TikTok', youtube: '▶️ YouTube',
+  pinterest: '📌 Pinterest', github: '🐙 GitHub',
+};
+
 const NET_CFG = {
   profile: {
     facebook:  { site: 'site:facebook.com',
@@ -1289,6 +1309,8 @@ const NET_CFG = {
       chips: { exclude: [{ label: 'No individual videos', val: 'watch' }] } },
     pinterest: { site: 'site:pinterest.com',
       chips: { exclude: [{ label: 'No individual pins', val: '/pin/' }] } },
+    github:    { site: 'site:github.com',
+      chips: { exclude: [{ label: 'No repo internals (commits, issues, pull requests)', val: '/commit/, /issues/, /pull/, /blob/' }] } },
   },
   post: {
     facebook:  { site: 'site:facebook.com',
@@ -1307,6 +1329,8 @@ const NET_CFG = {
                exclude: [{ label: 'No channel pages', val: '/channel/, /user/' }] } },
     pinterest: { site: 'site:pinterest.com',
       chips: { include: [{ label: 'Only individual pins', val: '/pin/' }] } },
+    github:    { site: 'site:github.com',
+      chips: { include: [{ label: 'Only commits, issues, or pull requests', val: '/commit/, /issues/, /pull/' }] } },
   }
 };
 
@@ -1331,17 +1355,36 @@ function setMode(mode, btn) {
   buildQuery();
 }
 
-// ── Network pill toggle ───────────────────────────────────────
+// Combines every selected network's site: into one clause. One network →
+// bare "site:x.com"; several → "(site:a.com OR site:b.com OR ...)" so any of
+// the chosen platforms can match. X/Twitter's "search both domains" option
+// contributes two clauses of its own rather than one.
+function buildSiteClause(mode, useBothTW) {
+  const clauses = [];
+  selectedNets[mode].forEach(net => {
+    const cfg = NET_CFG[mode][net];
+    if (!cfg) return;
+    if (net === 'twitter' && useBothTW) {
+      clauses.push('site:x.com', 'site:twitter.com');
+    } else {
+      clauses.push(cfg.site);
+    }
+  });
+  if (!clauses.length) return '';
+  return clauses.length === 1 ? clauses[0] : '(' + clauses.join(' OR ') + ')';
+}
+
+// ── Network pill toggle (multi-select — combine platforms with OR) ─
 function toggleNet(mode, net, btn) {
-  const pills = document.querySelectorAll(`#${mode}-pills .pill`);
-  if (selectedNets[mode] === net) {
-    selectedNets[mode] = null;
+  const isActive = selectedNets[mode].has(net);
+  if (isActive) {
+    selectedNets[mode].delete(net);
     btn.classList.remove('active');
   } else {
-    selectedNets[mode] = net;
-    pills.forEach(p => p.classList.remove('active'));
+    selectedNets[mode].add(net);
     btn.classList.add('active');
   }
+  btn.setAttribute('aria-pressed', String(!isActive));
   if (mode === 'profile' || mode === 'post') {
     clearUrlFields(mode); // URL patterns are network-specific; don't carry stale values across networks
     renderUrlChips(mode);
@@ -1368,7 +1411,7 @@ function updateSiteModifierState(mode) {
   const prefix = fieldPrefix(mode);
   const label  = document.getElementById(`${prefix}-site-modifier`);
   const badge  = document.getElementById(`${prefix}-site-inert-badge`);
-  const active = !!selectedNets[mode];
+  const active = selectedNets[mode].size > 0;
   if (label) label.classList.toggle('inert', !active);
   if (badge) badge.style.display = active ? 'none' : 'inline';
 }
@@ -1380,7 +1423,7 @@ function updateTwitterBothVisibility() {
   const row = document.getElementById('post-twitter-both-row');
   const box = document.getElementById('post-mod-twitter-both');
   if (!row || !box) return;
-  const isTwitter = selectedNets.post === 'twitter';
+  const isTwitter = selectedNets.post.has('twitter');
   row.style.display = isTwitter ? 'flex' : 'none';
   if (!isTwitter && box.checked) box.checked = false;
 }
@@ -1395,21 +1438,25 @@ function renderUrlChips(mode) {
   if (!incWrap || !excWrap) return;
   incWrap.innerHTML = '';
   excWrap.innerHTML = '';
-  const net = selectedNets[mode];
-  const cfg = net ? NET_CFG[mode][net] : null;
-  if (!cfg || !cfg.chips) return;
-  (cfg.chips.include || []).forEach(c => incWrap.appendChild(makeUrlChip(mode, 'include', c)));
-  (cfg.chips.exclude || []).forEach(c => excWrap.appendChild(makeUrlChip(mode, 'exclude', c)));
+  const nets = [...selectedNets[mode]];
+  const showNetTag = nets.length > 1; // only needed when patterns from multiple platforms could be confused
+  nets.forEach(net => {
+    const cfg = NET_CFG[mode][net];
+    if (!cfg || !cfg.chips) return;
+    const tag = showNetTag ? `${NET_LABELS[net] || net}: ` : '';
+    (cfg.chips.include || []).forEach(c => incWrap.appendChild(makeUrlChip(mode, 'include', c, tag)));
+    (cfg.chips.exclude || []).forEach(c => excWrap.appendChild(makeUrlChip(mode, 'exclude', c, tag)));
+  });
 }
 
-function makeUrlChip(mode, kind, c) {
+function makeUrlChip(mode, kind, c, tag = '') {
   const prefix  = fieldPrefix(mode);
   const fieldId = `${prefix}-url-${kind}`;
   const field   = document.getElementById(fieldId);
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'chip';
-  btn.textContent = c.label;
+  btn.textContent = tag + c.label;
   if (field && field.value.trim() === c.val) btn.classList.add('active');
   btn.onclick = () => {
     if (field.value.trim() === c.val) {
@@ -1577,8 +1624,6 @@ function parseFiletypes(raw) {
 
 // ── Query builders ────────────────────────────────────────────
 function buildProfileQuery() {
-  const net    = selectedNets.profile;
-  const cfg    = net ? NET_CFG.profile[net] : null;
   const name   = v('p-name');
   const alias  = v('p-alias');
   const kw     = v('p-keyword');
@@ -1593,8 +1638,11 @@ function buildProfileQuery() {
 
   const parts = [];
 
-  // site:
-  if (cfg && useSite) parts.push(cfg.site);
+  // site: — OR'd across every selected network
+  if (useSite) {
+    const siteClause = buildSiteClause('profile', false);
+    if (siteClause) parts.push(siteClause);
+  }
 
   // name
   if (name) {
@@ -1627,8 +1675,6 @@ function buildProfileQuery() {
 }
 
 function buildPostQuery() {
-  const net    = selectedNets.post;
-  const cfg    = net ? NET_CFG.post[net] : null;
   const exact  = v('post-exact');
   const and    = v('post-and');
   const or     = v('post-or');
@@ -1644,11 +1690,11 @@ function buildPostQuery() {
 
   const parts = [];
 
-  // site: — "both domains" only makes sense when X/Twitter is the selected network
-  if (useBothTW && net === 'twitter') {
-    parts.push('(site:x.com OR site:twitter.com)');
-  } else if (cfg && useSite) {
-    parts.push(cfg.site);
+  // site: — OR'd across every selected network ("both domains" adds an extra
+  // clause for X/Twitter specifically when that network is selected)
+  if (useSite) {
+    const siteClause = buildSiteClause('post', useBothTW);
+    if (siteClause) parts.push(siteClause);
   }
 
   // exact phrase
@@ -2115,8 +2161,11 @@ function resetMode(mode) {
   panel.querySelectorAll('input[type="radio"]').forEach(el => { el.checked = el.defaultChecked; });
 
   if (mode === 'profile' || mode === 'post') {
-    selectedNets[mode] = null;
-    panel.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+    selectedNets[mode].clear();
+    panel.querySelectorAll('.pill').forEach(p => {
+      p.classList.remove('active');
+      p.setAttribute('aria-pressed', 'false');
+    });
     renderUrlChips(mode);
     updateSiteModifierState(mode);
   }
